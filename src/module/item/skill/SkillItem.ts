@@ -1,9 +1,11 @@
 import { BaseItem } from "../BaseItem";
+import { FateChatCard } from "../../chat/FateChatCard";
+import { FateRoll } from "../../chat/FateRoll";
 
 type sortBy = "name" | "rank" | "reverse";
 
 export class SkillItem extends BaseItem {
-    static get entityName() {
+    static get documentName() {
         return "skill";
     }
 
@@ -18,9 +20,11 @@ export class SkillItem extends BaseItem {
         html.find(".fatex-js-skill-increment").click((e) => this._onSkillChangeRank.call(this, e, sheet, true));
         html.find(".fatex-js-skill-decrement").click((e) => this._onSkillChangeRank.call(this, e, sheet, false));
 
-        html.find(`.fatex-js-${this.entityName}-sort-rank`).click(() => this._onSkillSort.call(this, sheet, "rank"));
-        html.find(`.fatex-js-${this.entityName}-sort-name`).click(() => this._onSkillSort.call(this, sheet, "name"));
-        html.find(`.fatex-js-${this.entityName}-sort-reverse`).click(() => this._onSkillSort.call(this, sheet, "reverse"));
+        html.find(`.fatex-js-${this.documentName}-sort-rank`).click(() => this._onSkillSort.call(this, sheet, "rank"));
+        html.find(`.fatex-js-${this.documentName}-sort-name`).click(() => this._onSkillSort.call(this, sheet, "name"));
+        html.find(`.fatex-js-${this.documentName}-sort-reverse`).click(() =>
+            this._onSkillSort.call(this, sheet, "reverse")
+        );
     }
 
     /**
@@ -43,9 +47,9 @@ export class SkillItem extends BaseItem {
     }
 
     static prepareItemData(data, _item) {
-        data.data.isNegative = data.data.rank < 0;
-        data.data.isPositive = data.data.rank >= 0;
-        data.data.isNeutral = data.data.rank === 0;
+        data.system.isNegative = data.system.rank < 0;
+        data.system.isPositive = data.system.rank >= 0;
+        data.system.isNeutral = data.system.rank === 0;
 
         return data;
     }
@@ -74,21 +78,21 @@ export class SkillItem extends BaseItem {
         const skills = sheet.actor.items.filter((item) => item.type == "skill");
 
         if (sortBy === "name") {
-            skills.sort((a, b) => a.data.name.localeCompare(b.data.name));
+            skills.sort((a, b) => a.name.localeCompare(b.name));
         } else if (sortBy === "rank") {
-            skills.sort((a, b) => a.data.data.rank - b.data.data.rank).reverse();
+            skills.sort((a, b) => a.system.rank - b.system.rank).reverse();
         } else if (sortBy === "reverse") {
-            skills.sort((a, b) => a.data.sort - b.data.sort).reverse();
+            skills.sort((a, b) => a.sort - b.sort).reverse();
         }
 
         let i = 0;
 
         const updates = skills.map((skill) => ({
-            _id: skill._id,
+            _id: skill.id,
             sort: 10000 + i++,
         }));
 
-        sheet.actor.updateOwnedItem(updates);
+        sheet.actor.updateEmbeddedDocuments("Item", updates);
     }
 
     static async _onSkillChangeRank(e, sheet, doIncrement) {
@@ -99,18 +103,11 @@ export class SkillItem extends BaseItem {
         const skill = sheet.actor.items.get(dataset.item);
 
         if (skill) {
-            const rank = skill.data.data.rank;
-            let newRank;
-
-            if (doIncrement) {
-                newRank = rank >= 9 ? 9 : rank + 1;
-            } else {
-                newRank = rank <= -9 ? -9 : rank - 1;
-            }
+            const rank = skill.system.rank;
 
             await skill.update(
                 {
-                    "data.rank": newRank,
+                    "data.rank": doIncrement ? rank + 1 : rank - 1,
                 },
                 {}
             );
@@ -128,72 +125,24 @@ export class SkillItem extends BaseItem {
         const skill = sheet.actor.items.get(dataset.itemId);
 
         if (skill) {
-            await this.rollSkill(sheet, skill);
+            await this.rollSkill(sheet, skill, e);
         }
     }
 
-    static async rollSkill(sheet, item) {
-        const skill = this.prepareItemData(duplicate(item.data), item);
-        const template = "systems/fatex/templates/chat/roll-skill.hbs";
-        const rank = parseInt(skill.data.rank) || 0;
+    static async rollSkill(sheet, skill, event) {
         const actor = sheet.actor;
-        // @ts-ignore
-        const roll = new Roll("4dF").roll({ async: false });
-        const dice = this.getDice(roll);
-        const total = this.getTotalString((roll.total || 0) + rank);
-        const ladder = this.getLadderLabel((roll.total || 0) + rank);
 
-        // Prepare skill item
-        const templateData = { skill, rank, dice, total, ladder };
+        const fateRoll = FateRoll.createFromSkill(skill, {
+            magic: event.shiftKey,
+        });
 
-        const chatData = {
-            user: game.user?.id,
-            speaker: ChatMessage.getSpeaker({ actor: actor }),
-            type: CONST.CHAT_MESSAGE_TYPES.ROLL,
-            sound: CONFIG.sounds.dice,
-            roll: roll,
-            rollMode: game.settings.get("core", "rollMode") as string,
-            content: await renderTemplate(template, templateData),
+        if (!fateRoll) {
+            return;
+        }
 
-            flags: {
-                templateVariables: templateData,
-            },
-        };
+        await fateRoll.roll();
 
-        await ChatMessage.create(chatData);
-    }
-
-    static getDice(roll) {
-        const useOldRollApi = isNewerVersion("0.7.0", game.data.version as string);
-        const rolls = useOldRollApi ? roll.parts[0].rolls : roll.terms[0].results;
-
-        return rolls.map((rolledDie) => ({
-            value: rolledDie.roll,
-            face: this.getDieFace(useOldRollApi ? rolledDie.roll : rolledDie.result),
-        }));
-    }
-
-    static getDieFace(die) {
-        if (die > 0) return "+";
-        if (die < 0) return "-";
-
-        return "0";
-    }
-
-    static getLadderLabel(value) {
-        if (value > 8) value = 8;
-        if (value < -4) value = -4;
-
-        return game.i18n.localize("FAx.Global.Ladder." + this.getTotalString(value));
-    }
-
-    static getLadderPrefix(value) {
-        if (value < 0) return "-";
-
-        return "+";
-    }
-
-    static getTotalString(total) {
-        return this.getLadderPrefix(total).concat(Math.abs(total).toString());
+        const fateChatCard = FateChatCard.create(actor, [fateRoll]);
+        await fateChatCard.sendToChat();
     }
 }

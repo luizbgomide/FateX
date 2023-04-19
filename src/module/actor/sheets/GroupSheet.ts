@@ -2,21 +2,22 @@ import { InlineActorSheetFate } from "./InlineActorSheetFate";
 import { getReferencesByGroupType } from "../../helper/ActorGroupHelper";
 import { CharacterSheetOptions } from "./CharacterSheet";
 import { FateActor } from "../FateActor";
-import { ActorReferenceItemData, CombatantReferenceItemData, TokenReferenceItemData } from "../../item/ItemTypes";
+import { CombatantReferenceItemData, ReferenceItemData, TokenReferenceItemData } from "../../item/ItemTypes";
 import { FateItem } from "../../item/FateItem";
-import { SortableEvent } from "sortablejs";
-import Sortable from "sortablejs/modular/sortable.complete.esm.js";
+import { ItemData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/itemData";
+import Sortable, { SortableEvent } from "sortablejs";
+import { TokenData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs";
 
 /**
  * Represents a single actor group
  */
-export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
+export class GroupSheet extends ActorSheet {
     public inlineSheets: InlineActorSheetFate[];
 
     /**
      * Initialize inlineSheets as an empty array of sheets
      */
-    constructor(object, options) {
+    constructor(object: FateActor, options: ActorSheet.Options) {
         super(object, options);
 
         /**
@@ -35,13 +36,13 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
             template: "/systems/fatex/templates/actor/group.hbs",
             dragDrop: [{ dropSelector: null }],
             scrollY: [".fatex-desk__content"],
-        } as CharacterSheetOptions);
+        });
     }
 
     getData() {
         // Basic fields and flags
         const data: any = {
-            owner: this.actor.owner,
+            owner: this.actor.isOwner,
             options: this.options,
             editable: this.isEditable,
             isTemplateActor: this.actor.isTemplateActor,
@@ -51,31 +52,34 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
         };
 
         // Add actor, actor data and item
-        data.actor = duplicate(this.actor.data);
-        data.data = data.actor.data;
-        data.items = this.actor.items.map((i) => i.data);
-        data.items.sort((a, b) => (a.sort || 0) - (b.sort || 0));
+        data.actor = duplicate(this.actor);
+        data.data = data.actor;
+        data.items = this.actor.items.map((i) => foundry.utils.duplicate(i));
+        data.items.sort((a: ItemData, b: ItemData) => (a.sort || 0) - (b.sort || 0));
 
         // Create list of available tokens in the current scene for manual groups
-        if (this.actor.data.type == "group" && this.actor.data.data.groupType == "manual") {
-            const usedTokenReferences = this.actor.items.filter((i) => i.data.type === "tokenReference" && i.data.data.scene === game.scenes?.active.id);
+        // @ts-ignore
+        if (this.actor.type == "group" && this.actor.system.groupType == "manual") {
+            // @ts-ignore
+            const usedTokenReferences = this.actor.items.filter((i) => i.type === "tokenReference" && i.system.scene === game.scenes?.active?.id);
             const usedTokenReferencesMap: string[] = usedTokenReferences.map((token: FateItem) => {
-                return token.data.type === "tokenReference" ? token.data.data.id : "";
+                // @ts-ignore
+                return token.data.type === "tokenReference" ? token.system.id : "";
             });
 
-            if (canvas instanceof Canvas && canvas.scene) {
-                data.availableTokens = canvas.scene.data.tokens.filter((token) => !token.actorLink && !usedTokenReferencesMap.includes(token._id));
+            if (canvas.scene) {
+                data.availableTokens = canvas.scene.tokens.filter((token) => !token.isLinked && !usedTokenReferencesMap.includes(token.id || ""));
             }
         }
 
         return data;
     }
 
-    activateListeners(html) {
+    activateListeners(html: JQuery) {
         super.activateListeners(html);
 
-        html.find(`.fatex__actor_group__createToken`).on("click", (e) => this._onCreateTokenReference.call(this, e));
-        html.find(`.fatex__actor_group__sheet__navigation a`).on("click", (e) => this._onChangeGroupNavigation.call(this, e));
+        html.find(`.fatex__actor_group__createToken`).on("click", (e: JQuery.ClickEvent) => this._onCreateTokenReference.call(this, e));
+        html.find(`.fatex__actor_group__sheet__navigation a`).on("click", (e: JQuery.ClickEvent) => this._onChangeGroupNavigation.call(this, e));
 
         // Custom sheet listeners for every ItemType
         for (const itemType in CONFIG.FateX.itemClasses) {
@@ -94,11 +98,12 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
      * Saves manual group order by sorting embedded entities.
      * Saves scene/encounter group order by using sortables integrated localstorage sorting
      */
-    addSortableJSHandler(html) {
-        if (this.actor.data.type != "group" || !html.find(".fatex-js-actor-group-sheets").length) return;
+    addSortableJSHandler(html: JQuery) {
+        if (this.actor.type != "group" || !html.find(".fatex-js-actor-group-sheets").length) return;
 
-        if (this.actor.data.data.groupType == "manual") {
-            return Sortable.create(html.find(".fatex-js-actor-group-sheets")[0], {
+        // @ts-ignore
+        if (this.actor.system.groupType == "manual") {
+            Sortable.create(html.find(".fatex-js-actor-group-sheets")[0], {
                 animation: 150,
                 removeOnSpill: true,
                 onEnd: (e: SortableEvent) => this.sortInlineSheets.call(this, e),
@@ -109,16 +114,12 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
         Sortable.create(html.find(".fatex-js-actor-group-sheets")[0], {
             group: ["groupSort", this.actor.id].join("-"),
             animation: 150,
-            store: {
-                get: (sortable) => (localStorage.getItem(sortable.options.group.name) ? localStorage.getItem(sortable.options.group.name)?.split("|") : []),
-                set: (sortable) => localStorage.setItem(sortable.options.group.name, sortable.toArray().join("|")),
-            },
         });
     }
 
     async spillInlineSheet(event: SortableEvent) {
         if (event.item.dataset.id) {
-            await this.actor.deleteOwnedItem(event.item.dataset.id);
+            await this.actor.deleteEmbeddedDocuments("Item", [event.item.dataset.id]);
         }
     }
 
@@ -130,7 +131,7 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
             sort: 100000 + index,
         }));
 
-        await this.actor.updateOwnedItem(updateData);
+        await this.actor.updateEmbeddedDocuments("Item", updateData);
     }
 
     /**
@@ -161,11 +162,12 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
     async _render(force = false, options = {}) {
         await super._render(force, options);
 
-        if (this.actor.data.type !== "group") {
+        if (this.actor.type !== "group") {
             return;
         }
 
-        const references = getReferencesByGroupType(this.actor.data.data.groupType, this.actor);
+        // @ts-ignore
+        const references = getReferencesByGroupType(this.actor.system.groupType, this.actor);
 
         for (const reference of references) {
             if (reference.type === "actorReference") {
@@ -189,13 +191,14 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
      * Creates and renders a new InlineActorSheet based on an actor reference.
      * An actor is referenced by his actor id
      */
-    async renderInlineActor(reference: DeepPartial<ActorReferenceItemData>) {
+    async renderInlineActor(reference: ReferenceItemData) {
         const actor = game.actors?.find((actor) => actor.id === reference.data?.id && (actor as FateActor).isVisibleByPermission);
 
         if (!actor) {
             return;
         }
 
+        // @ts-ignore
         const actorSheet = new InlineActorSheetFate(actor as FateActor, { referenceID: reference._id } as CharacterSheetOptions);
         // @ts-ignore
         await actorSheet.render(true, { group: this } as Application.RenderOptions);
@@ -207,17 +210,18 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
      * Creates and renders a new InlineActorSheet based on a token reference.
      * A token is referenced by a combination of the scene where its placed and its token id
      */
-    async renderInlineToken(reference: DeepPartial<TokenReferenceItemData>) {
+    async renderInlineToken(reference: Partial<ItemData & TokenReferenceItemData>) {
         const scene: any = game.scenes?.find((scene) => scene.id === reference.data?.scene);
-        const tokenData = scene?.data.tokens.find((token) => token._id === reference.data?.id);
+        const tokenData = scene.data.tokens.find((token: TokenData) => token._id === reference.data?.id);
 
         if (!tokenData) {
             return;
         }
 
-        const token = new Token(tokenData, scene);
+        tokenData.parent = scene;
+        const token = new Token(tokenData);
 
-        const tokenSheet = new InlineActorSheetFate(token.actor as FateActor, { referenceID: reference._id } as CharacterSheetOptions);
+        const tokenSheet = new InlineActorSheetFate(token.actor as FateActor, { referenceID: reference.data?.id } as CharacterSheetOptions);
         // @ts-ignore
         await tokenSheet.render(true, { token: token, group: this } as Application.RenderOptions);
 
@@ -227,23 +231,29 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
     /**
      * Creates and renders a new InlineActorSheet based on a combatant reference.
      */
-    async renderInlineCombatant(reference: DeepPartial<CombatantReferenceItemData>) {
+    async renderInlineCombatant(reference: CombatantReferenceItemData) {
         if (!game.combats || !game.combats.active) {
             return;
         }
 
         const scene: any = game.scenes?.find((scene) => scene.id === game.combats?.active?.data.scene);
-        const combatant = game.combats.active.combatants.find((combatant) => combatant._id === reference.data?.id);
-        const tokenData = scene?.data.tokens.find((token) => token._id === combatant?.tokenId);
+        const combatant = game.combats.active.combatants.find((combatant) => combatant.data._id === reference.data?.id);
+        const tokenData = scene.data.tokens.find((token: TokenData) => token._id === combatant?.token?.id);
 
         if (!tokenData || !combatant || !combatant.visible) {
             return;
         }
 
+        // @ts-ignore
         delete combatant.actor;
 
-        const token = new Token(tokenData, scene);
-        const tokenSheet = new InlineActorSheetFate(token.actor as FateActor, { combatant: combatant, referenceID: reference._id } as CharacterSheetOptions);
+        tokenData.parent = scene;
+        const token = new Token(tokenData);
+
+        const tokenSheet = new InlineActorSheetFate(
+            token.actor as FateActor,
+            { combatant: combatant, referenceID: reference.data.id } as CharacterSheetOptions
+        );
         // @ts-ignore
         await tokenSheet.render(true, { token: token, group: this } as Application.RenderOptions);
 
@@ -254,33 +264,38 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
      * Create a new ownedItem of type ActorReference based on a given actorID
      * @param actorID
      */
-    _createActorReference(actorID: string) {
+    _createActorReference(actorUUID: string) {
+        // @ts-ignore
+        const actor = fromUuidSync(actorUUID) as FateActor;
+
         // Check if character is already present
-        if (this.actor.items.find((i) => i.data.type === "actorReference" && i.data.data.id === actorID)) {
+        // @ts-ignore
+        if (this.actor.items.find((i) => i.type === "actorReference" && i.system.id === actor.id)) {
             return;
         }
 
         // Only allow character-type actors to be referenced
-        if (game.actors?.get(actorID)?.data.type !== "character") {
+        if (actor.type !== "character") {
             return;
         }
 
-        const itemData: Partial<ActorReferenceItemData> = {
-            name: ["actorReference", actorID].join("-"),
+        const itemData: Partial<ItemData> = {
+            name: ["actorReference", actor.id].join("-"),
             type: "actorReference",
             data: {
-                id: actorID,
+                id: actor.id ?? "",
             },
         };
 
-        return this.actor.createOwnedItem(itemData);
+        this.actor.createEmbeddedDocuments("Item", [itemData]);
     }
 
-    _createActorReferencesFromFolder(folder: string) {
-        const actors = game.folders?.get(folder)?.entities.filter((actor) => actor.data.type === "character") || [];
+    _createActorReferencesFromFolder(folderUUID: string) {
+        // @ts-ignore
+        const actors = fromUuidSync(folderUUID).contents.filter((actor) => actor instanceof FateActor && actor.type === "character") || [];
 
         actors.forEach((actor) => {
-            this._createActorReference(actor.id);
+            this._createActorReference(`Actor.${actor.id}` || "");
         });
     }
 
@@ -288,11 +303,12 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
      * Create a new ownedItem of type tokenReference based on a given sceneID and tokenID
      */
     _createTokenReference(tokenID: string, sceneID: string): void {
-        if (this.actor.items.find((i) => i.data.type === "tokenReference" && i.data.data.id === tokenID && i.data.data.scene === sceneID)) {
+        // @ts-ignore
+        if (this.actor.items.find((i) => i.type === "tokenReference" && i.system.id === tokenID && i.system.scene === sceneID)) {
             return;
         }
 
-        const itemData: Partial<TokenReferenceItemData> = {
+        const itemData: Partial<ItemData> = {
             name: ["tokenReference", sceneID, tokenID].join("-"),
             type: "tokenReference",
             data: {
@@ -301,14 +317,14 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
             },
         };
 
-        this.entity.createOwnedItem(itemData);
+        this.actor.createEmbeddedDocuments("Item", [itemData]);
     }
 
     /*************************
      * EVENT HANDLER
      *************************/
 
-    _onChangeGroupNavigation(e) {
+    _onChangeGroupNavigation(e: JQuery.ClickEvent) {
         e.preventDefault();
         e.stopPropagation();
 
@@ -324,7 +340,7 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
         app.find(`.fatex__actor_group__sheet__navigation--${e.currentTarget.dataset.show}`).addClass("active");
     }
 
-    _onCreateTokenReference(e) {
+    _onCreateTokenReference(e: JQuery.ClickEvent) {
         e.preventDefault();
         e.stopPropagation();
 
@@ -335,14 +351,14 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
         }
 
         const tokens = game.actors.tokens;
-        const tokenActor = Object.values(tokens).find((t) => t.token?.id === dataset.tokenId);
+        const tokenActor = Object.values(tokens).find((t) => t?.token?.id === dataset.tokenId);
 
         if (!tokenActor) {
             return;
         }
 
         if (game.scenes) {
-            this._createTokenReference(dataset.tokenId, game.scenes.active.id);
+            this._createTokenReference(dataset.tokenId, game.scenes?.active?.id || "");
         }
     }
 
@@ -351,25 +367,27 @@ export class GroupSheet extends ActorSheet<ActorSheet.Data<FateActor>> {
      * Handles the ability to drop actors from the sidebar into an actor group
      */
     // @ts-ignore
-    async _onDrop(event) {
+    async _onDrop(event: DragEvent) {
         let data;
 
         try {
-            data = JSON.parse(event.dataTransfer.getData("text/plain"));
+            // @ts-ignore
+            data = TextEditor.getDragEventData(event);
         } catch (err) {
             return false;
         }
 
-        if (this.actor.data.type != "group" || this.actor.data.data.groupType != "manual") {
+        // @ts-ignore
+        if (this.actor.type != "group" || this.actor.system.groupType != "manual") {
             ui.notifications?.error(game.i18n.localize("FAx.ActorGroups.Notifications.ManualOnly"));
             return false;
         }
 
         switch (data.type) {
             case "Actor":
-                return this._createActorReference(data.id);
+                return this._createActorReference(data.uuid);
             case "Folder":
-                return this._createActorReferencesFromFolder(data.id);
+                return this._createActorReferencesFromFolder(data.uuid);
             case "Item":
                 return this._onDropItem(event, data);
         }

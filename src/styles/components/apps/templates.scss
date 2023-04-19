@@ -4,6 +4,15 @@
     height: 100%;
     min-width: 100%;
     gap: $component-padding;
+    flex-wrap: wrap;
+
+    &--empty {
+        flex-wrap: nowrap;
+    }
+
+    &--min {
+        min-height: 375px;
+    }
 }
 
 .fatex-template {
@@ -12,7 +21,7 @@
     &__actions {
         display: flex;
         flex-direction: column;
-        gap: $component-padding / 2;
+        gap: $component-padding * 0.5;
     }
 
     &__help {

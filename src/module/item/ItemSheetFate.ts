@@ -4,7 +4,7 @@ export class ItemSheetFate extends ItemSheet {
             classes: ["fatex", "fatex-sheet", "fatex-sheet--item", "sheet"],
             scrollY: [".fatex-desk__content"],
             width: 575,
-        } as BaseEntitySheet.Options);
+        });
     }
 
     getData() {
@@ -12,7 +12,9 @@ export class ItemSheetFate extends ItemSheet {
         let data: any = super.getData();
 
         // enforce data to ensure compatability between 0.7 and 0.8
-        data.data = this.entity.data.data;
+        // @ts-ignore
+        data.data = this.object.system;
+        data.system = data.data;
 
         // Set owner name if possible
         data.isOwnedBy = this.actor ? this.actor.name : false;
@@ -20,7 +22,7 @@ export class ItemSheetFate extends ItemSheet {
         // Let every item type manipulate its own sheet data
         data = CONFIG.FateX.itemClasses[this.item.type]?.getSheetData(data, this) || data;
 
-        // Let every component manipulate an items sheet data
+        // Let every component manipulate an items' sheet data
         for (const sheetComponent in CONFIG.FateX.sheetComponents.item) {
             if (Object.prototype.hasOwnProperty.call(CONFIG.FateX.sheetComponents.item, sheetComponent)) {
                 data = CONFIG.FateX.sheetComponents.item[sheetComponent].getSheetData(data, this);
@@ -31,7 +33,7 @@ export class ItemSheetFate extends ItemSheet {
     }
 
     get template() {
-        return `systems/fatex/templates/item/${this.item.data.type}-sheet.hbs`;
+        return `systems/fatex/templates/item/${this.item.type}-sheet.hbs`;
     }
 
     activateListeners(html) {

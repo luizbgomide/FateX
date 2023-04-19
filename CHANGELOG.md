@@ -1,5 +1,64 @@
 # Changelog
 
+### 1.2.4
+* Allow magic and normal dice to be rolled at the same time
+
+### 1.2.2
+* Added option to change the color for magic dice
+
+### 1.2.1
+* Fixed some wording and added a reload button after changing specific system settings
+
+### 1.2.0
+* Added support for the GuildCodex magic system (disabled by default)
+
+### 1.1.1
+* Automatically updates the prototype token name when an actors name is changed (if both were identical). Can be disabled in the system settings.
+
+### 1.1.0
+* Fixed skill modifier display in chat messages
+* Updated all npm dependencies to newest versions
+* Added action buttons to new chat messages (+2 and reroll)
+
+### 1.0.2
+* Roll 4dFm while holding shift - a modifier which counts pluses double
+
+### 1.0.1
+* Fixed inline character sheet size (group view)
+
+### 1.0.0
+* Initial 1.0 release!
+* Added support for Foundry v10
+
+### 0.16.1
+* Wrap actor template inside picker and settings menu instead of using a horizontal scroll bar
+
+### 0.16.1
+* Allow artwork of all sized to be fully shown
+* Fixed focus loss on sheet re-render
+
+### 0.16.0
+* Updated all npm dependencies to newest versions
+* Added new translations
+  * Portuguese (Brazil) (big thanks to contributor [luizbgomide](https://github.com/luizbgomide))
+* Updated existing translations
+  * German (big thanks to contributor [ianw12345](https://github.com/ianw12345))
+  * French (big thanks to contributor [em-squared](https://github.com/em-squared))
+* Added compatibility to Baileywikis maps modules 
+
+### 0.15.3
+* Fixed text wrapping of headline icons (e.g. +2)
+* Fixed wrongly associated language keys
+
+### 0.15.2
+* Enrich the output of stunts and extras with entity links
+
+### 0.15.1
+* Allow skill ranks to go beyond +9
+
+### 0.15.0
+* Added compatibility to FoundryVTT v9
+
 ### 0.14.1
 * Added the ability to change the image for unlinked items
 

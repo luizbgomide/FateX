@@ -4,27 +4,15 @@
  */
 import { getImageFromReference, getReferencesByGroupType } from "../helper/ActorGroupHelper";
 import { ActorDataFate } from "./ActorTypes";
-import { FateItem } from "../item/FateItem";
+import { ActorDataConstructorData } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/actorData";
 
-export class FateActor extends Actor<ActorDataFate, FateItem> {
-    /**
-     * Open template picker instead of directly creating a new actor
-     */
-    static async create(data, options = {}) {
-        // Fallback for manual actor duplication
-        if (data._id || Object.prototype.hasOwnProperty.call(data, "data") || data?.flags?.cf !== undefined) {
-            return super.create(data, options);
-        }
-
-        return CONFIG.FateX.applications.templatePicker?.render(true);
-    }
-
+export class FateActor extends Actor {
     /**
      * Open template picker instead of showing creation dialog
      */
-    static async createDialog(data, _options = {}): Promise<any> {
+    static async createDialog(data?: DeepPartial<ActorDataConstructorData>, _options = {}): Promise<any> {
         if (CONFIG.FateX.applications.templatePicker) {
-            CONFIG.FateX.applications.templatePicker.options.folder = data.folder;
+            CONFIG.FateX.applications.templatePicker.options.folder = data?.folder;
         }
 
         return CONFIG.FateX.applications.templatePicker?.render(true);
@@ -34,7 +22,7 @@ export class FateActor extends Actor<ActorDataFate, FateItem> {
      * Provide basic token configuration for newly created actors.
      * Automatically links new tokens to the actor.
      */
-    static async _create(data, options = {}) {
+    static async _create(data: any, options = {}) {
         data.token = data.token || {};
 
         // Set basic token data for newly created actors.
@@ -65,7 +53,7 @@ export class FateActor extends Actor<ActorDataFate, FateItem> {
     /**
      * Re-render all open FateX applications as soon a single actor is updated (used for TemplateActorSettings and TemplateActorPicker)
      */
-    render(force = false, options) {
+    render(force = false, options: Application.RenderOptions) {
         super.render(force, options);
 
         for (const app in CONFIG.FateX.applications) {
@@ -99,31 +87,28 @@ export class FateActor extends Actor<ActorDataFate, FateItem> {
     }
 
     get images(): string[] {
-        if (this.data.type != "group") {
+        if (this.data.type !== "group") {
             return [];
         }
 
         const images: string[] = [];
-        const actorReferences = getReferencesByGroupType(this.data.data.groupType, this);
+        // @ts-ignore
+        const actorReferences = getReferencesByGroupType(this.system.groupType, this);
 
         for (let i = 0; i < 4; i++) {
-            images.push(actorReferences[i] ? getImageFromReference(actorReferences[i]) : DEFAULT_TOKEN);
+            images.push(actorReferences[i] ? getImageFromReference(actorReferences[i]) : CONST.DEFAULT_TOKEN);
         }
 
         return images;
     }
+}
 
-    /**
-     * Re-prepare the data for all owned items when owned items are deleted.
-     * This ensures, that items that reference the deleted item get updated.
-     *
-     * Also rerenders the actor group panel if necessary
-     */
-    _onModifyEmbeddedEntity(embeddedName, changes, options, userId, context = {}) {
-        super._onModifyEmbeddedEntity(embeddedName, changes, options, userId, context);
+declare global {
+    interface DocumentClassConfig {
+        Actor: typeof FateActor;
+    }
 
-        if (embeddedName === "OwnedItem") {
-            this.items.forEach((item) => item.prepareData());
-        }
+    interface DataConfig {
+        Actor: ActorDataFate;
     }
 }

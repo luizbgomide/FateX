@@ -1,14 +1,18 @@
 import { BaseItem } from "../BaseItem";
-import * as marked from "marked";
+import { marked } from "marked";
 
 export class StuntItem extends BaseItem {
-    static entityName = "stunt";
+    static documentName = "stunt";
 
     static getActorSheetData(sheetData) {
         if (CONFIG.FateX.global.useMarkdown) {
             for (const stunt of sheetData.stunts) {
                 stunt.data.markdown = marked(stunt.data.description);
             }
+        }
+
+        for (const stunt of sheetData.stunts) {
+            stunt.system.description = TextEditor.enrichHTML(stunt.system.description, {});
         }
 
         return sheetData;
@@ -33,7 +37,7 @@ export class StuntItem extends BaseItem {
         if (item) {
             await item.update(
                 {
-                    "data.collapsed": !item.data.data.collapsed,
+                    "data.collapsed": !item.system.collapsed,
                 },
                 {}
             );

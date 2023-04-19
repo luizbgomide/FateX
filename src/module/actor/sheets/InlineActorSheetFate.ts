@@ -1,9 +1,12 @@
-import { CharacterSheet, CharacterSheetOptions } from "./CharacterSheet";
+import { CharacterSheet } from "./CharacterSheet";
+import { GroupSheet } from "./GroupSheet";
 
 export class InlineActorSheetFate extends CharacterSheet {
     static get defaultOptions() {
         return mergeObject(super.defaultOptions, {
             group: undefined,
+            width: "auto",
+            height: "auto",
             tabs: [
                 {
                     navSelector: ".fatex-js-tabs-navigation",
@@ -11,19 +14,22 @@ export class InlineActorSheetFate extends CharacterSheet {
                     initial: "aspects",
                 },
             ],
-        } as unknown as CharacterSheetOptions);
+        });
     }
 
     getData(_options?: Application.RenderOptions) {
         const data = super.getData();
 
         if (this.options.referenceID) {
+            // @ts-ignore
             data.referenceID = this.options.referenceID;
         }
 
         if (this.options.combatant) {
-            data.defeated = this.options.combatant.defeated;
-            data.hidden = this.options.combatant.hidden;
+            // @ts-ignore
+            data.defeated = this.options.combatant.data.defeated;
+            // @ts-ignore
+            data.hidden = this.options.combatant.data.hidden;
         }
 
         return data;
@@ -53,10 +59,10 @@ export class InlineActorSheetFate extends CharacterSheet {
         return this;
     }
 
-    _injectHTML(html, options) {
+    _injectHTML(html: JQuery, options: { group?: GroupSheet } = {}) {
         const group = options?.group ?? this.options.group;
 
-        $(`#${group.id} .fatex-js-actor-group-sheets`).append(html);
+        $(`#${group?.id} .fatex-js-actor-group-sheets`).append(html);
         this._element = html;
     }
 }

@@ -6,12 +6,12 @@
 {{/inline}}
 
 {{> "systems/fatex/templates/components/app-header.hbs"
-    title="ACTOR.Create"
+    title=AppTitle
     label="FAx.Template.Picker.Label"
     centerPartial="centerPartial"
 }}
 
-<div class="fatex-templates">
+<div class="fatex-templates {{#unless (gte templateActors.length 1)}}fatex-templates--empty{{/unless}}">
     <div class="fatex-template">
         <header class="fatex-headline">
             <h3 class="fatex-headline__text">{{localize "FAx.Template.Picker.Empty"}}</h3>
@@ -41,9 +41,11 @@
         </div>
     </div>
 
-    <div class="fatex-template__or">
-        <span>{{localize "FAx.Template.Picker.Or"}}</span>
-    </div>
+    {{#if (lte templateActors.length 2)}}
+        <div class="fatex-template__or">
+            <span>{{localize "FAx.Template.Picker.Or"}}</span>
+        </div>
+    {{/if}}
 
     {{#each templateActors as |template templateIndex|}}
         <div class="fatex-template">

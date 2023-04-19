@@ -58,6 +58,14 @@
                 "EmptyActor": "It looks like your character doesn't have any content yet. You can change this in the <strong>Edit Mode</strong> or the <strong>Sheet Setup</strong>. The buttons to toggle the edit mode or open the setup can be found in the header bar."
             }
         },
+        "ChatCard": {
+            "MessageNotFound": "Message not found - can't update the chosen message.",
+            "NoGMConnected": "A GM must be connected to the game to update the chosen message.",
+            "History": {
+                "Reroll": "rerolled (was {previous})",
+                "Increase": "added +2"
+            }
+        },
         "Item": {
             "Stress": {
                 "Name": "Stress track label",
@@ -103,7 +111,17 @@
                 "EditItem": "Edit Skill",
                 "Rank": "Rank",
                 "Description": "Description",
-                "DescriptionHelp": "Is only displayed when sending to chat"
+                "DescriptionHelp": "Is only displayed when sending to chat",
+                "Options": {
+                    "Headline": "Options",
+                    "IsMagicSkill": "Magic Skill",
+                    "IsMagicSkillHelp": "If checked, this skills rank will be used to determine the number of magic dice to roll. Hold shift while rolling a skill to activate this feature."
+                },
+                "Roll": {
+                    "MultipleMagicSkills": "Multiple magic skills found ({skills}). Using the first one to roll.",
+                    "NoMagicSkills": "No magic skill found. Please add a magic skill to your character sheet and roll again.",
+                    "MagicSkillTooLow": "The magic skill rank is zero or less. Please increase the rank to roll magic dice."
+                }
             },
             "Stunt": {
                 "Name": "Stunt title",
@@ -159,8 +177,8 @@
         "Dialog": {
             "ReferenceRemove": "Remove reference",
             "ReferenceRemoveText": "Do you really want to <strong>permanently</strong> remove this reference?",
-            "EntityDelete": "Delete",
-            "EntityDeleteText": "Do you really want to <strong>permanently</strong> delete this entity?",
+            "DocumentDelete": "Delete",
+            "DocumentDeleteText": "Do you really want to <strong>permanently</strong> delete this entity?",
             "ActorClear": "Clear component",
             "ActorClearText": "Do you really want to <strong>permanently</strong> delete all this actors components <strong>and their content</strong> of the chosen type?",
             "Confirm": "Confirm",
@@ -205,6 +223,14 @@
                     "Name": "Enable alpha features",
                     "Hint": "This setting enables experimental FateX alpha features. Alpha features are subject to change."
                 }
+            },
+            "autoUpdateTokenName": {
+                "Name": "Automatically update prototype token name",
+                "Hint": "Automatically updates the prototype token name when an actors name is changed (if both were identical)."
+            },
+            "magicSystemEnabled": {
+                "Name": "Enable the magic system from GuildCodex",
+                "Hint": "This will add a magic skill to the character sheet and allow you to use magic dice."
             }
         },
         "Template": {
@@ -224,6 +250,9 @@
             "Notifications": {
                 "ManualOnly": "This groups actors are managed automatically. If you want to manually add actors, change the groups type to \"manual\"."
             }
+        },
+        "Sheets": {
+            "Reference": "Reference Sheet"
         }
     }
 }

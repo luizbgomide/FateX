@@ -33,6 +33,9 @@ import { ReferenceSheet } from "./module/item/references/ReferenceSheet";
 import { FateScene } from "./module/scene/FateScene";
 import { FateCombat } from "./module/combat/FateCombat";
 import { FateXSettings } from "./module/helper/Settings";
+import { ChatActionsFeature } from "./module/features/ChatActionsFeature";
+import { PrototypeTokenNameSyncFeature } from "./module/features/PrototypeTokenNameSyncFeature";
+import { MagicSystem } from "./module/features/MagicSystem";
 
 /* -------------------------------- */
 /*	System initialization			*/
@@ -43,10 +46,10 @@ Hooks.once("init", async () => {
     // Initialise config
     CONFIG.FateX = FateX;
 
-    CONFIG.Actor.entityClass = FateActor;
-    CONFIG.Item.entityClass = FateItem;
-    CONFIG.Scene.entityClass = FateScene;
-    CONFIG.Combat.entityClass = FateCombat;
+    CONFIG.Actor.documentClass = FateActor;
+    CONFIG.Item.documentClass = FateItem;
+    CONFIG.Scene.documentClass = FateScene;
+    CONFIG.Combat.documentClass = FateCombat;
 
     CONFIG.FateX.global.useMarkdown = !![...game.modules.values()].filter((module) => {
         return module.id === "markdown-editor" && module.active;
@@ -107,6 +110,7 @@ Hooks.once("init", async () => {
     Items.registerSheet("FateX", ReferenceSheet, {
         types: ["actorReference", "tokenReference"],
         makeDefault: true,
+        label: "FAx.Sheets.Reference",
     });
 
     // Preload all needed templates
@@ -118,6 +122,9 @@ Hooks.once("init", async () => {
 /* -------------------------------- */
 TemplateActorsFeature.hooks();
 ActorGroupFeature.hooks();
+ChatActionsFeature.hooks();
+PrototypeTokenNameSyncFeature.hooks();
+MagicSystem.hooks();
 
 /* -------------------------------- */
 /*	Webpack HMR                     */
@@ -127,16 +134,14 @@ if (module.hot) {
 
     if (module.hot.status() === "apply") {
         for (const template in _templateCache) {
-            if (Object.prototype.hasOwnProperty.call(_templateCache, template)) {
+            if (template in _templateCache) {
                 delete _templateCache[template];
             }
         }
 
         TemplatePreloader.preloadHandlebarsTemplates().then(() => {
             for (const application in ui.windows) {
-                if (Object.prototype.hasOwnProperty.call(ui.windows, application)) {
-                    ui.windows[application].render(true);
-                }
+                ui.windows[application].render(true);
             }
         });
     }

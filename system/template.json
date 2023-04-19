@@ -24,6 +24,9 @@
             "base": {
                 "disabled": false,
                 "description": ""
+            },
+            "subItem": {
+                "parentID": ""
             }
         },
         "stress": {
@@ -51,7 +54,10 @@
         },
         "skill": {
             "templates": ["base"],
-            "rank": 0
+            "rank": 0,
+            "options": {
+                "isMagicSkill": false
+            }
         },
         "stunt": {
             "templates": ["base"],
@@ -59,7 +65,7 @@
             "collapsed": false
         },
         "extra": {
-            "templates": ["base"],
+            "templates": ["base", "subItem"],
             "shortDescription": "",
             "collapsed": false
         },

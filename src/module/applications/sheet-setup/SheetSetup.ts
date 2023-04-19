@@ -1,23 +1,24 @@
 import { DataManager } from "./DataManager";
 import { FateActor } from "../../actor/FateActor";
+import { ItemDataProperties } from "@league-of-foundry-developers/foundry-vtt-types/src/foundry/common/data/data.mjs/itemData";
 
 const CLEAR = {
     EVERYTHING: 0,
     ASPECTS: 1,
     CONSEQUENCES: 2,
     SKILLS: 3,
-    STRESS: 4
+    STRESS: 4,
 };
 
 const TYPES = {
     1: "aspect",
     2: "consequence",
     3: "skill",
-    4: "stress"
+    4: "stress",
 };
 
 export class SheetSetup extends FormApplication<any, any, FateActor> {
-    constructor(object, options) {
+    constructor(object: any, options) {
         super(object, options);
 
         this.actor.apps[this.appId] = this;
@@ -39,10 +40,10 @@ export class SheetSetup extends FormApplication<any, any, FateActor> {
             tabs: [
                 {
                     navSelector: ".fatex-js-vertical-tabs-navigation",
-                    contentSelector: ".fatex-js-vertical-tabs-content"
-                }
-            ]
-        } as FormApplication.Options);
+                    contentSelector: ".fatex-js-vertical-tabs-content",
+                },
+            ],
+        });
     }
 
     async getData() {
@@ -94,15 +95,15 @@ export class SheetSetup extends FormApplication<any, any, FateActor> {
             return;
         }
 
-        const itemData = entries.toArray().map((item) => {
-            if (!item.dataset.entity) {
+        const itemData: Partial<ItemDataProperties>[] = entries.toArray().map((item) => {
+            if (!item.dataset.document) {
                 return {};
             }
 
-            return JSON.parse(item.dataset.entity);
+            return JSON.parse(item.dataset.document);
         });
 
-        await this.actor.createOwnedItem(itemData);
+        await this.actor.createEmbeddedDocuments("Item", itemData);
         this.render(true);
     }
 
@@ -133,32 +134,34 @@ export class SheetSetup extends FormApplication<any, any, FateActor> {
                     cancel: {
                         icon: '<i class="fas fa-times"></i>',
                         label: game.i18n.localize("FAx.Dialog.Cancel"),
-                        callback: () => null
+                        callback: () => null,
                     },
                     submit: {
                         icon: '<i class="fas fa-check"></i>',
                         label: game.i18n.localize("FAx.Dialog.Confirm"),
                         callback: async () => {
                             await this._doClear(type);
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             },
             {
-                classes: ["fatex", "fatex-dialog"]
+                classes: ["fatex", "fatex-dialog"],
             }
         ).render(true);
     }
 
     async _doClear(type) {
-        let items = this.actor.data.items;
+        let items;
 
         if (type > 0) {
-            items = items.filter((i) => i.type === TYPES[type]);
+            items = this.actor.items.filter((i) => i.type === TYPES[type]);
+        } else {
+            items = this.actor.items;
         }
 
-        const deletions = items.map((i) => i._id);
-        await this.actor.deleteOwnedItem(deletions);
+        const deletions = items.map((i) => i.id || "");
+        await this.actor.deleteEmbeddedDocuments("Item", deletions);
 
         this.render(true);
     }
